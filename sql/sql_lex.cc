@@ -11780,21 +11780,30 @@ bool LEX::map_data_type(const Lex_ident_sys_st &schema_name,
 }
 
 
-bool SELECT_LEX_UNIT::explainable() const
+bool SELECT_LEX_UNIT::explainable()
 {
   /*
     EXPLAIN/ANALYZE unit, when:
     (1) if it's a subquery - it's not part of eliminated WHERE/ON clause.
     (2) if it's a CTE - it's not hanging (needed for execution)
-    (3) if it's a derived - it's not merged
+    (3) if it's a derived - it's not merged or eliminated
     if it's not 1/2/3 - it's some weird internal thing, ignore it
   */
+
   return item ?
            !item->eliminated :                        // (1)
            with_element ?
              derived && derived->derived_result &&
                !with_element->is_hanging_recursive(): // (2)
              derived ?
-               derived->is_materialized_derived() :   // (3)
+               derived->is_materialized_derived() && // (3)
+                 !is_derived_eliminated() :
                false;
+}
+
+bool SELECT_LEX_UNIT::is_derived_eliminated()
+{
+  if (!derived)
+    return false;
+  return derived->table->map & outer_select()->join->eliminated_tables;
 }

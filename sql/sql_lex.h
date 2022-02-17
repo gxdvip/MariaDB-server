@@ -1026,7 +1026,7 @@ public:
   int save_union_explain_part2(Explain_query *output);
   unit_common_op common_op();
 
-  bool explainable() const;
+  bool explainable();
 
   void reset_distinct();
   void fix_distinct();
@@ -1039,6 +1039,9 @@ public:
   bool set_lock_to_the_last_select(Lex_select_lock l);
 
   friend class st_select_lex;
+
+private:
+  bool is_derived_eliminated();
 };
 
 typedef class st_select_lex_unit SELECT_LEX_UNIT;
