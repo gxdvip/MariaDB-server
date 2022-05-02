@@ -2,6 +2,7 @@
 #define JSON_LIB_INCLUDED
 
 #include <my_sys.h>
+#include "hash.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -442,6 +443,129 @@ int json_normalize(DYNAMIC_STRING *result,
                    const char *s, size_t size, CHARSET_INFO *cs);
 
 int json_skip_array_and_count(json_engine_t *j, int* n_item);
+
+
+typedef struct const_value
+{
+  enum json_value_types const_type;
+  /*
+    because const value can be non-scalar as well.
+    So it makes sense to store it in json_engine_e for easy parsing
+    and comparing.
+  */
+  json_engine_t const_json_value;
+  int has_const;
+} st_const_value;
+
+typedef struct enum_str_or_number
+{
+  char *str;
+  int length;
+  int flag; /*0- number, 1-string*/
+} st_json_scalar;
+
+enum enum_flags { HAS_NONE= 0, HAS_TRUE= 2, HAS_FALSE= 4, HAS_NULL= 6};
+typedef struct enum_value
+{
+  HASH enum_string_or_number;
+  uint flag;
+  int has_enum;
+} st_enum_values;
+
+typedef struct common_constraints
+{
+  enum json_value_types type;
+  st_const_value const_value;
+  st_enum_values enum_values;
+} st_common_constraints;
+
+enum number_property_flag
+{ HAS_NO_NUM_FLAG=0, HAS_MIN=2, HAS_EXCLUSIVE_MIN= 4,
+  HAS_MAX=8, HAS_EXCLUSIVE_MAX= 16, HAS_MULTIPLE_OF=32 };
+typedef struct number_constraints
+{
+  double max, min, multiple_of, ex_min, ex_max;
+  uint flag;
+} st_number_constraints;
+
+enum string_property_flag
+{ HAS_NO_STR_FLAG= 0, HAS_MAX_LEN= 2, HAS_MIN_LEN= 4};
+typedef struct string_constraints
+{
+  double max_len, min_len;
+  uint flag;
+}st_string_constraints;
+
+enum array_property_flag
+{ HAS_NO_ARRAY_FLAG= 0, HAS_MAX_ITEMS= 2, HAS_MIN_ITEMS= 4};
+typedef struct array_constraints
+{
+  double max_items, min_items;
+  enum json_value_types allowed_item_type;
+  uint flag;
+}st_array_constraints;
+
+typedef struct object_constraints
+{
+  int has_constraint;
+  HASH properties;
+  HASH required_properties;
+}st_object_constraints;
+
+typedef struct json_schema
+{
+  st_common_constraints common_constraints;
+  st_number_constraints number_constraints;
+  st_string_constraints string_constraints;
+  st_array_constraints array_constraints;
+  st_object_constraints object_constraints;
+} st_json_schema;
+
+typedef struct object_property
+{
+  st_json_schema keyname_constraints;
+  LEX_CSTRING keyname;
+   
+}st_object_property;
+
+int handle_keyword(const char *curr_key, st_json_schema *cur_step,
+                    json_engine_t *je, int key_len, int *count);
+void initialize_curr_step(st_json_schema *cur_step);
+int assign_type(st_common_constraints *cur_common_property, 
+                 st_array_constraints *cur_arr_property,
+                 json_engine_t *je);
+int handle_common_property_keywords(const char *curr_key,
+                                    st_common_constraints *cur_common_property,
+                                    json_engine_t *je, int key_len);
+int handle_number_property_keywords(const char *curr_key,
+                                   st_number_constraints *cur_number_property,
+                                   double val, int key_len,
+                                   st_common_constraints *cur_common_property);
+int handle_string_property_keywords(const char *curr_key,
+                                   st_string_constraints *cur_string_property,
+                                   double val, int key_len,
+                                   st_common_constraints *cur_common_property);
+int handle_array_property_keywords(const char *curr_key,
+                                   st_array_constraints *cur_array_property,
+                                   double val, int key_len,
+                                   st_common_constraints *cur_common_property,
+                                   json_engine_t *je);
+int fill_curr_property(st_json_schema *curr_property, json_engine_t *je);
+int handle_object_property_keywords(const char *curr_key,
+                                   st_json_schema *cur_step,
+                                   double val, int key_len,
+                                   st_common_constraints *cur_common_property,
+                                   json_engine_t *je);
+int validate_scalar(json_engine_t *je, st_json_schema *cur_step);
+int validate_non_scalar(json_engine_t *je,
+                        json_engine_t *temp_je,
+                         st_json_schema *cur_step);
+int validate_against_schema(json_engine_t *je,
+                             st_json_schema *cur_step);
+int validate_json_schema(json_engine_t *je, st_json_schema *cur_step, int *count);
+uchar* get_key_for_property(const uchar *buff, size_t *length,
+                        my_bool /* unused */);
+
 
 #ifdef  __cplusplus
 }

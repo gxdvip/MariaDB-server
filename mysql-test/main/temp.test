@@ -1,0 +1,5 @@
+SET @schema_number= '{
+  "type": "number",
+  "enum": [1, 20, 100]
+}';
+SELECT JSON_SCHEMA_VALID(@schema_number, '1');

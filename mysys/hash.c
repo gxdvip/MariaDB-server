@@ -193,7 +193,7 @@ my_hash_key(const HASH *hash, const uchar *record, size_t *length,
             my_bool first)
 {
   if (hash->get_key)
-    return (char*) (*hash->get_key)(record,length,first);
+    return (char*) (*(hash->get_key))(record,length,first);
   *length=hash->key_length;
   return (char*) record+hash->key_offset;
 }
