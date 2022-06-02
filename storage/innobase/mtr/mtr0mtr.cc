@@ -1435,7 +1435,7 @@ mtr_t::memo_contains_page_flagged(
 #endif /* UNIV_DEBUG */
 
 
-/** Find a block, preferrably in MTR_MEMO_MODIFY state */
+/** Find a potentially modified block. */
 struct FindModified
 {
   mtr_memo_slot_t *found= nullptr;
@@ -1447,8 +1447,7 @@ struct FindModified
     if (slot->object != &block)
       return true;
     found= slot;
-    return !(slot->type & (MTR_MEMO_MODIFY |
-                           MTR_MEMO_PAGE_X_FIX | MTR_MEMO_PAGE_SX_FIX));
+    return !(slot->type & (MTR_MEMO_PAGE_X_FIX | MTR_MEMO_PAGE_SX_FIX));
   }
 };
 
@@ -1471,4 +1470,64 @@ void mtr_t::modify(const buf_block_t &block)
   }
   iteration.functor.found->type= static_cast<mtr_memo_type_t>
     (iteration.functor.found->type | MTR_MEMO_MODIFY);
+}
+
+/** Handle an exclusively latched block that was later marked as freed. */
+struct MarkFreed
+{
+  const page_id_t id;
+  mutable buf_block_t *freed= nullptr;
+  MarkFreed(page_id_t id) : id(id) {}
+
+  bool operator()(mtr_memo_slot_t *slot) const
+  {
+    buf_block_t *block= static_cast<buf_block_t*>(slot->object);
+    if (!block);
+    else if (block == freed)
+    {
+      if (slot->type & (MTR_MEMO_PAGE_SX_FIX | MTR_MEMO_PAGE_X_FIX))
+        slot->type= MTR_MEMO_PAGE_X_FIX;
+      else
+      {
+        ut_ad(slot->type == MTR_MEMO_BUF_FIX);
+        block->page.unfix();
+        slot->object= nullptr;
+      }
+    }
+    else if (slot->type & (MTR_MEMO_PAGE_X_FIX | MTR_MEMO_PAGE_SX_FIX) &&
+             block->page.id() == id)
+    {
+      ut_ad(!block->page.is_freed());
+      ut_ad(!freed);
+      freed= block;
+      if (!(slot->type & MTR_MEMO_PAGE_X_FIX))
+      {
+        ut_d(bool upgraded=) block->page.lock.x_lock_upgraded();
+        ut_ad(upgraded);
+      }
+      slot->type= MTR_MEMO_PAGE_X_MODIFY;
+#ifdef BTR_CUR_HASH_ADAPT
+      if (block->index)
+        btr_search_drop_page_hash_index(block);
+#endif /* BTR_CUR_HASH_ADAPT */
+      block->page.set_freed(block->page.state());
+    }
+    return true;
+  }
+};
+
+/** Free a page.
+@param space   tablespace
+@param offset  offset of the page to be freed */
+void mtr_t::free(const fil_space_t &space, uint32_t offset)
+{
+  ut_ad(is_named_space(&space));
+  ut_ad(!m_freed_space || m_freed_space == &space);
+
+  if (is_logged())
+  {
+    m_memo.for_each_block_in_reverse
+      (CIterate<MarkFreed>((MarkFreed{{space.id, offset}})));
+    m_log.close(log_write<FREE_PAGE>({space.id, offset}, nullptr));
+  }
 }

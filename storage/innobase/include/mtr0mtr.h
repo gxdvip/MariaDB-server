@@ -494,9 +494,9 @@ public:
   @param[in,out]        b       buffer page */
   void init(buf_block_t *b);
   /** Free a page.
-  @param[in]      space   tablespace contains page to be freed
-  @param[in]      offset  page offset to be freed */
-  inline void free(fil_space_t &space, uint32_t offset);
+  @param space   tablespace
+  @param offset  offset of the page to be freed */
+  void free(const fil_space_t &space, uint32_t offset);
   /** Write log for partly initializing a B-tree or R-tree page.
   @param block    B-tree or R-tree page
   @param comp     false=ROW_FORMAT=REDUNDANT, true=COMPACT or DYNAMIC */
