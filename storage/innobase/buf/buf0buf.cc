@@ -3643,7 +3643,7 @@ dberr_t buf_page_t::read_complete(const fil_node_t &node)
     if (read_id == expected_id);
     else if (read_id == page_id_t(0, 0))
     {
-      /* This is likely an uninitialized page. */
+      /* This is likely an uninitialized (all-zero) page. */
       err= DB_FAIL;
       goto release_page;
     }

@@ -2924,10 +2924,11 @@ ATTRIBUTE_COLD void recv_sys_t::free_corrupted_page(page_id_t page_id)
   {
     p->second.log.clear();
     pages.erase(p);
+    if (!srv_force_recovery)
+      set_corrupt_fs();
   }
-  if (!srv_force_recovery)
-    set_corrupt_fs();
-  else if (pages.empty())
+
+  if (pages.empty())
     pthread_cond_broadcast(&cond);
   mysql_mutex_unlock(&mutex);
 }
