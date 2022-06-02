@@ -11413,8 +11413,7 @@ foreign_fail:
 			     ctx->new_table, CHECK_ABORTED_OK));
 
 #ifdef UNIV_DEBUG
-		if (!(ctx->new_table->fts != NULL
-			&& ctx->new_table->fts->cache->sync->in_progress)) {
+		if (ctx->new_table->fts != NULL) {
 			ut_a(fts_check_cached_index(ctx->new_table));
 		}
 #endif
