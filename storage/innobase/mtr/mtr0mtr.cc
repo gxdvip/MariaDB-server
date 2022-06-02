@@ -1468,8 +1468,7 @@ void mtr_t::modify(const buf_block_t &block)
   }
   iteration.functor.found->type= static_cast<mtr_memo_type_t>
     (iteration.functor.found->type | MTR_MEMO_MODIFY);
-  if (is_block_dirtied(static_cast<const buf_block_t*>
-                       (iteration.functor.found->object)))
+  if (is_block_dirtied(&block))
     m_made_dirty= true;
 }
 
