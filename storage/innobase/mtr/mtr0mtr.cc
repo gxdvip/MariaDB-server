@@ -665,7 +665,6 @@ void mtr_t::process_freed_pages()
   {
     ut_ad(!m_freed_pages->empty());
     ut_ad(m_freed_space);
-    ut_ad(memo_contains(*m_freed_space));
     ut_ad(m_freed_space->is_owner());
     ut_ad(is_named_space(m_freed_space));
 
