@@ -538,18 +538,6 @@ inline void mtr_t::init(buf_block_t *b)
   m_last_offset= FIL_PAGE_TYPE;
 }
 
-/** Free a page.
-@param[in]	space 	tablespace contains page to be freed
-@param[in]	offset	page offset to be freed */
-inline void mtr_t::free(fil_space_t &space, uint32_t offset)
-{
-  ut_ad(is_named_space(&space));
-  ut_ad(!m_freed_space || m_freed_space == &space);
-
-  if (is_logged())
-    m_log.close(log_write<FREE_PAGE>({space.id, offset}, nullptr));
-}
-
 /** Write an EXTENDED log record.
 @param block  buffer pool page
 @param type   extended record subtype; @see mrec_ext_t */
